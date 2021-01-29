@@ -10,11 +10,11 @@ from functools import reduce
 import os
 
 # Project Parameters
-ASSETS_PATH: str = "./assets/"
+ASSETS_PATH: str = os.path.join(os.path.dirname(__file__), "assets")
 MODULO_PATH: str = os.path.join(ASSETS_PATH, "N.txt")
-CURVE_FILE_NAMING_PATTERN: str = "curve_{}.txt"
-PLAINTEXT_FILE_NAMING_PATTERN: str = "msg_{}.txt"
-PUBLIC_KEY: int = 2 ** 16 - 1
+CURVE_FILE_NAMING_PATTERN: str = "curve_{:d}.txt"
+PLAINTEXT_FILE_NAMING_PATTERN: str = "msg_{:d}.txt"
+PUBLIC_KEY: int = 65537
 
 with open(MODULO_PATH, "r") as file:
     N = int(file.readline())
@@ -70,7 +70,7 @@ class NumberUtils:
             if bit == 1:
                 result = (result * data) % n  # Multiply
 
-        if exponent_bin[0] == 0:  # TODO: Why ?
+        if exponent_bin[0] == 0:  # Assume squaring if hypothesis is 0.
             result = (result * result) % n
         return NumberUtils.hamming_weight(result)
 
@@ -146,11 +146,10 @@ def compute_key_by_factoring() -> int:
     return NumberUtils.mod_inverse(PUBLIC_KEY, totient)
 
 
-def compute_key_by_cpa() -> int:
+def compute_key_by_cpa(
+    number_of_plaintext=1000, number_of_points_per_trace=36
+) -> int:
     """Calculate the private key using CPA."""
-    number_of_plaintext = 1000
-    number_of_points_per_trace = 36
-
     plaintexts = tuple(
         fetch_plaintexts(number_of_plaintext=number_of_plaintext)
     )
@@ -159,14 +158,14 @@ def compute_key_by_cpa() -> int:
         number_of_points_per_trace=number_of_points_per_trace,
     )  # shape (1000, 36)
 
-    key_builder = [1]
-    point_idx = 1
-    while point_idx < number_of_points_per_trace:
+    key_builder = [1]  # Key start with 1 for obvious reasons
+    time = 1  # Skip 0, since start with existing value
+    while time < number_of_points_per_trace:
         hypothesis_matrix = compute_hypothesis_matrix(
             plaintexts, key_builder
         )  # shape (1000, 2)
         power_consumption_of_bit = power_consumptions[
-            :, point_idx : point_idx + 1
+            :, time : time + 1
         ]  # shape (1000, 1)
         correlation_matrix = NumberUtils.corr(
             hypothesis_matrix, power_consumption_of_bit
@@ -176,12 +175,15 @@ def compute_key_by_cpa() -> int:
 
         key_builder.insert(0, best_hypothesis)  # .prepend
         if best_hypothesis == 1:
-            point_idx += 1  # Skip Multiply  # TODO: Why ?
-        point_idx += 1
+            time += 1  # Skip Multiply
+        time += 1
 
     return NumberUtils.bitListToInt(reversed(key_builder))
 
 
 if __name__ == "__main__":
-    print(f"Factoring : {compute_key_by_factoring():b}")
-    print(f"CPA : {compute_key_by_cpa():b}")
+    expected = compute_key_by_factoring()
+    result = compute_key_by_factoring()
+    print(f"Factoring : {expected:b}")
+    print(f"CPA : {result:b}")
+    print(f"Equality : {result == expected}")
