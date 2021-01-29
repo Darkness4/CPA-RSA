@@ -119,7 +119,7 @@ def fetch_plaintexts(number_of_plaintext: int = 1000) -> Iterable[int]:
 
 
 def compute_hypothesis_matrix(
-    plaintexts: Tuple[int], old_key: Tuple[int]
+    plaintexts: Iterable[int], old_key: Tuple[int]
 ) -> np.ndarray:
     """Return the hypothesis matrix.
 
@@ -130,7 +130,7 @@ def compute_hypothesis_matrix(
     hypothesis_matrix = np.zeros((len(plaintexts), 2))
     for (plaintext_idx, plaintext) in enumerate(plaintexts):
         for hypothesis_bit in (0, 1):
-            hypothesis_key = [hypothesis_bit] + old_key
+            hypothesis_key = (hypothesis_bit,) + old_key
             hypothesis_matrix[
                 plaintext_idx, hypothesis_bit
             ] = NumberUtils.hamming_weight_for_rsa(
@@ -158,11 +158,12 @@ def compute_key_by_cpa(
         number_of_points_per_trace=number_of_points_per_trace,
     )  # shape (1000, 36)
 
-    key_builder = [1]  # Key start with 1 for obvious reasons
+    # Key start with 1 for obvious reasons. Key is little-endian.
+    key_builder = [1]
     time = 1  # Skip 0, since start with existing value
     while time < number_of_points_per_trace:
         hypothesis_matrix = compute_hypothesis_matrix(
-            plaintexts, key_builder
+            plaintexts, tuple(key_builder)
         )  # shape (1000, 2)
         power_consumption_of_bit = power_consumptions[
             :, time : time + 1
@@ -183,7 +184,7 @@ def compute_key_by_cpa(
 
 if __name__ == "__main__":
     expected = compute_key_by_factoring()
-    result = compute_key_by_factoring()
+    result = compute_key_by_cpa()
     print(f"Factoring : {expected:b}")
     print(f"CPA : {result:b}")
     print(f"Equality : {result == expected}")
