@@ -43,7 +43,7 @@ class NumberUtils:
 
     @staticmethod
     def mod_inverse(a: int, b: int) -> int:
-        """Apply the extended euclidean algorithm to find the gcd between a and ."""
+        """Apply the extended euclidean algorithm to find the gcd between a and b."""
         if b <= 1:
             raise ZeroDivisionError
         old_r, r = a, b
@@ -51,7 +51,7 @@ class NumberUtils:
 
         while old_r > 1:
             if r == 0:
-                raise ValueError("/ by zero: not coprime")
+                raise ZeroDivisionError("not coprime")
 
             q = old_r // r
             old_r, r = r, old_r - q * r
@@ -141,7 +141,14 @@ def compute_key_by_factoring() -> int:
 
 
 def compute_key_by_cpa(number_of_plaintext=1000, number_of_points_per_trace=36) -> int:
-    """Calculate the private key using CPA."""
+    """Calculate the private key using CPA.
+
+    The aim of this function is to build the private key gradually, bit by bit.
+    At each iteration, a hypothesis bit will be added to the key and a correlation
+    matrix will follow.
+
+    Based on the correlation matrix, we select the best hypothesis.
+    """
     plaintexts = tuple(fetch_plaintexts(number_of_plaintext=number_of_plaintext))
     power_consumptions = load_power_consumptions(
         number_of_trace=number_of_plaintext,
@@ -150,7 +157,7 @@ def compute_key_by_cpa(number_of_plaintext=1000, number_of_points_per_trace=36) 
 
     # Key start with 1 for obvious reasons. Key is little-endian.
     key_builder = [1]
-    time = 1  # Skip 0, since start with existing value
+    time = 1
     while time < number_of_points_per_trace:
         hypothesis_matrix = compute_hypothesis_matrix(
             plaintexts, tuple(key_builder)
@@ -165,8 +172,8 @@ def compute_key_by_cpa(number_of_plaintext=1000, number_of_points_per_trace=36) 
         best_hypothesis = np.argmax(correlation_matrix)
 
         key_builder.insert(0, best_hypothesis)  # .prepend
-        if best_hypothesis == 1:
-            time += 1  # Skip Multiply
+        if best_hypothesis == 1:  # If new bit is Square-Multiply.
+            time += 1  # Skip Multiply to avoid counting the same operation.
         time += 1
 
     return NumberUtils.bitListToInt(reversed(key_builder))
