@@ -60,9 +60,7 @@ class NumberUtils:
         return old_t if (old_t >= 0) else b - old_t
 
     @staticmethod
-    def hamming_weight_for_rsa(
-        data: int, exponent_bin: Iterable[int], n: int
-    ) -> int:
+    def hamming_weight_for_rsa(data: int, exponent_bin: Iterable[int], n: int) -> int:
         """Calculate key with Square-And-Multiply, and compute Hamming Weight."""
         result = 1
         for bit in reversed(exponent_bin):
@@ -91,9 +89,7 @@ def load_power_consumptions(
     number_of_trace: int = 1000, number_of_points_per_trace: int = 36
 ) -> np.ndarray:
     """Load the traces stored in files."""
-    power_consumptions = np.zeros(
-        (number_of_trace, number_of_points_per_trace)
-    )
+    power_consumptions = np.zeros((number_of_trace, number_of_points_per_trace))
     for i in range(number_of_trace):
         filename = CURVE_FILE_NAMING_PATTERN.format(i)
         pathfile = os.path.join(ASSETS_PATH, filename)
@@ -133,9 +129,7 @@ def compute_hypothesis_matrix(
             hypothesis_key = (hypothesis_bit,) + old_key
             hypothesis_matrix[
                 plaintext_idx, hypothesis_bit
-            ] = NumberUtils.hamming_weight_for_rsa(
-                plaintext, hypothesis_key, N
-            )
+            ] = NumberUtils.hamming_weight_for_rsa(plaintext, hypothesis_key, N)
     return hypothesis_matrix
 
 
@@ -146,13 +140,9 @@ def compute_key_by_factoring() -> int:
     return NumberUtils.mod_inverse(PUBLIC_KEY, totient)
 
 
-def compute_key_by_cpa(
-    number_of_plaintext=1000, number_of_points_per_trace=36
-) -> int:
+def compute_key_by_cpa(number_of_plaintext=1000, number_of_points_per_trace=36) -> int:
     """Calculate the private key using CPA."""
-    plaintexts = tuple(
-        fetch_plaintexts(number_of_plaintext=number_of_plaintext)
-    )
+    plaintexts = tuple(fetch_plaintexts(number_of_plaintext=number_of_plaintext))
     power_consumptions = load_power_consumptions(
         number_of_trace=number_of_plaintext,
         number_of_points_per_trace=number_of_points_per_trace,
